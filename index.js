@@ -23,6 +23,11 @@ let persons = [
       "id": "4",
       "name": "Mary Poppendieck", 
       "number": "39-23-6423122"
+    },
+    {
+        "id": "5",
+        "name": "Test",
+        "number": "555"
     }
 ]
 
@@ -43,6 +48,13 @@ app.get('/info', (request, response) => {
         <p>${new Date()}</p>
     `;
     response.send(info)
+})
+
+app.delete('/api/persons/:id', (request, response) => {
+    const id = request.params.id
+    persons = persons.filter(person => person.id !== id)
+
+    response.status(204).end()
 })
   
 const PORT = 3001
