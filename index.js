@@ -5,10 +5,16 @@ const morgan = require('morgan')
 app.use(morgan('tiny'))
 app.use(express.json())
 
+morgan.token('post-data', (req) => {
+    return req.method === 'POST' ? JSON.stringify(req.body) : ''
+})
+
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :post-data'))
+
 let persons = [
     { 
       "id": "1",
-      "name": "Arto Hellas", 
+      "name": "Arto Hellas",
       "number": "040-123456"
     },
     { 
@@ -27,9 +33,9 @@ let persons = [
       "number": "39-23-6423122"
     },
     {
-        "id": "5",
-        "name": "Test",
-        "number": "555"
+      "id": "5",
+      "name": "Test",
+      "number": "555"
     }
 ]
 
