@@ -4,16 +4,12 @@ const app = express()
 const Person = require('./models/person')
 const morgan = require('morgan')
 const cors = require('cors')
-const person = require('./models/person')
-
+const errorHandler = require('./middleware/errorHandler')
 
 app.use(cors())
 app.use(morgan('tiny'))
-app.use(express.json())
 app.use(express.static('dist'))
-
-const password = process.argv[2]
-require('dotenv').config()
+app.use(express.json())
 
 
 morgan.token('post-data', (req) => {
@@ -22,20 +18,14 @@ morgan.token('post-data', (req) => {
 
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :post-data'))
 
-app.get('/api/persons', (request, response) => {
+app.get('/api/persons', (request, response, next) => {
     Person.find({})
-        .then(persons => {
-            response.json(persons)
-        })
-        .catch(error => {
-            console.error('Error fetching persons from database:', error)
-            response.status(500).json({ error: 'Failed to fetch persons' })
-    })
+        .then(persons => response.json(persons))
+        .catch(error => next(error))
 })
 
-app.get('/api/persons/:id', (request, response) => {
+app.get('/api/persons/:id', (request, response, next) => {
     const id = request.params.id
-
     Person.findById(id)
         .then(person => {
             if (person) {
@@ -44,13 +34,10 @@ app.get('/api/persons/:id', (request, response) => {
                 response.status(404).end()
             }
         })
-        .catch(error => {
-            console.error('Error retrieving person:', error)
-            response.status(500).send({ error: 'Internal server error' })
-        })
+        .catch(error => next(error))
 })
 
-app.get('/info', (request, response) => {
+app.get('/info', (request, response, next) => {
     Person.find({})
         .then(persons => {
             const info = `
@@ -59,29 +46,18 @@ app.get('/info', (request, response) => {
             `;
             response.send(info)
         })
-        .catch(error => {
-            console.error('Error fetching info from database:', error)
-            response.status(500).json({ error: 'Failed to fetch info' })
+        .catch(error => next(error))
+})
+
+app.delete('/api/persons/:id', (request, response, next) => {
+    Person.findByIdAndDelete(request.params.id)
+    .then(result => {
+      response.status(204).end()
     })
+    .catch(error => next(error))
 })
 
-/*
-app.delete('/api/persons/:id', (request, response) => {
-    const id = request.params.id
-    persons = persons.filter(person => person.id !== id)
-
-    response.status(204).end()
-})
-*/
-
-/*
-const generateId = () => {
-    const randomId = Math.floor(Math.random() * 1000000).toString()
-    return randomId
-}
-*/
-
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
     const body = request.body;
 
     if (!body.name || !body.number) {
@@ -91,56 +67,45 @@ app.post('/api/persons', (request, response) => {
     Person.findOne({ name: body.name })
         .then(existingPerson => {
             if (existingPerson) {
-                return response.status(400).json({ error: 'name must be unique' })
-            }
-
-            const person = new Person({
-                name: body.name,
-                number: body.number,
-            })
-
-            return person.save()
-        })
-        .then(savedPerson => {
-            if (savedPerson) {
-                response.status(201).json(savedPerson)
+                return Person.findByIdAndUpdate(
+                    existingPerson._id, 
+                    { number: body.number }, 
+                    { new: true }
+                )
+            } else {
+                const person = new Person({
+                    name: body.name,
+                    number: body.number,
+                })
+                return person.save()
             }
         })
-        .catch(error => {
-            console.error('Error saving person:', error)
-            response.status(500).json({ error: 'Failed to save person' })
+        .then(result => {
+            if (result) {
+                response.status(201).json(result)
+            } else {
+                response.status(500).json( { error: 'Failed to update or create person' } )
+            }
         })
+        .catch(error => next(error))
 })
 
-/*
-app.post('/api/persons', (request, response) => {
+app.put('/api/persons/:id', (request, response, next) => {
     const body = request.body
-
-    if(!body.name || !body.number) {
-        return response.status(400).json({
-            error: 'name or number missing'
-        })
-    }
-
-    if(persons.some(person => person.name === body.name)) {
-           return response.status(400).json({
-            error: 'name must be unique'
-        })     
-    }
-
-    const person = {
-        name: body.name,
-        number: body.number,
-        id: generateId(),
-    }
-
-    persons = persons.concat(person)
-
-    response.json(person)
-
-})
-*/
   
+    const person = {
+      name: body.name,
+      number: body.number,
+    }
+  
+    Person.findByIdAndUpdate(request.params.id, person, { new: true })
+      .then(updatedPerson => {
+        response.json(updatedPerson)
+      })
+      .catch(error => next(error))
+})
+  
+app.use(errorHandler)
 const PORT = process.env.PORT
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
