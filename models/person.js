@@ -60,4 +60,4 @@ if (process.argv.length==5) {
 }
 
 
-module.exports = mongoose.model('Person', personSchema)
+module.exports = Person;

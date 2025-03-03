@@ -70,7 +70,7 @@ app.post('/api/persons', (request, response, next) => {
                 return Person.findByIdAndUpdate(
                     existingPerson._id, 
                     { number: body.number }, 
-                    { new: true }
+                    { new: true, runValidators: true, context: 'query' }
                 )
             } else {
                 const person = new Person({
@@ -91,15 +91,19 @@ app.post('/api/persons', (request, response, next) => {
 })
 
 app.put('/api/persons/:id', (request, response, next) => {
-    const {content, important} = request.body
+    const { name, number} = request.body
   
     Person.findByIdAndUpdate(
         request.params.id, 
-        { content, important },
+        { name, number },
         { new: true, runValidators: true, context: 'query' }
     )
-      .then(updatedPerson => {
-        response.json(updatedPerson)
+    .then(updatedPerson => {
+        if (updatedPerson) {
+            response.json(updatedPerson);
+        } else {
+            response.status(404).json({ error: 'Person not found' });
+        }
       })
       .catch(error => next(error))
 })
