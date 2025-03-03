@@ -87,7 +87,12 @@ app.post('/api/persons', (request, response, next) => {
                 response.status(500).json( { error: 'Failed to update or create person' } )
             }
         })
-        .catch(error => next(error))
+        .catch(error => {
+            if (error.name === 'ValidationError') {
+                return response.status(400).json({ error: error.message });
+            }
+            next(error)
+        })
 })
 
 app.put('/api/persons/:id', (request, response, next) => {
